@@ -1,0 +1,453 @@
+package com.example.ui.screens
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Assessment
+import androidx.compose.material.icons.filled.BatteryChargingFull
+import androidx.compose.material.icons.filled.ElectricBolt
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Memory
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.Sensors
+import androidx.compose.material.icons.filled.Storage
+import androidx.compose.material.icons.filled.TouchApp
+import androidx.compose.material.icons.filled.Vibration
+import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.example.data.model.TestCategory
+import com.example.data.model.TestStatus
+import com.example.ui.AppScreen
+import com.example.ui.DiagnosticViewModel
+import com.example.ui.components.DiagnosticTopAppBar
+import com.example.ui.components.HealthScoreRing
+import com.example.ui.theme.AmberWarning
+import com.example.ui.theme.CyanAccent
+import com.example.ui.theme.DiagnosticCardBorder
+import com.example.ui.theme.DiagnosticDarkBg
+import com.example.ui.theme.DiagnosticSurface
+import com.example.ui.theme.DiagnosticSurfaceVariant
+import com.example.ui.theme.GreenSuccess
+import com.example.ui.theme.RedDanger
+import com.example.ui.theme.TextMuted
+import com.example.ui.theme.TextPrimary
+import com.example.ui.theme.TextSecondary
+
+@Composable
+fun HomeScreen(
+    viewModel: DiagnosticViewModel,
+    onNavigate: (AppScreen) -> Unit
+) {
+    val scrollState = rememberScrollState()
+    val testItems by viewModel.testItems.collectAsStateWithLifecycle()
+    val battery by viewModel.batteryState.collectAsStateWithLifecycle()
+    val specs by viewModel.deviceSpecs.collectAsStateWithLifecycle()
+
+    val health = remember(testItems) { viewModel.calculateOverallHealth() }
+
+    LaunchedEffect(Unit) {
+        viewModel.evaluateAutomaticSystemHealth()
+    }
+
+    Scaffold(
+        topBar = {
+            DiagnosticTopAppBar(
+                title = "Hardware Diagnostics",
+                actions = {
+                    IconButton(
+                        onClick = { onNavigate(AppScreen.HISTORY) },
+                        modifier = Modifier.testTag("history_button")
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.History,
+                            contentDescription = "Diagnostic History",
+                            tint = CyanAccent
+                        )
+                    }
+                }
+            )
+        },
+        containerColor = DiagnosticDarkBg
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .verticalScroll(scrollState)
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            // Health Score & Device Overview Banner
+            Surface(
+                color = DiagnosticSurface,
+                shape = RoundedCornerShape(20.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .border(1.dp, DiagnosticCardBorder, RoundedCornerShape(20.dp))
+            ) {
+                Column(
+                    modifier = Modifier.padding(18.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column {
+                            Text(
+                                text = "${specs.manufacturer} ${specs.model}",
+                                fontSize = 16.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                            Text(
+                                text = "Android ${specs.androidVersion} • API ${specs.sdkInt}",
+                                fontSize = 12.sp,
+                                color = CyanAccent
+                            )
+                        }
+
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(GreenSuccess.copy(alpha = 0.15f))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        ) {
+                            Text(
+                                text = "DIAGNOSTICS READY",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = GreenSuccess
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(18.dp))
+
+                    HealthScoreRing(
+                        score = health.score,
+                        rating = health.rating,
+                        sizeDp = 136
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                viewModel.evaluateAutomaticSystemHealth()
+                                onNavigate(AppScreen.REPORT_DETAIL)
+                            },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(46.dp)
+                                .testTag("generate_report_button"),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = CyanAccent,
+                                contentColor = Color.Black
+                            )
+                        ) {
+                            Icon(Icons.Default.Assessment, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Full Health Report", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+
+                        OutlinedButton(
+                            onClick = { viewModel.evaluateAutomaticSystemHealth() },
+                            modifier = Modifier.height(46.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
+                        ) {
+                            Text("Quick Scan", fontSize = 12.sp)
+                        }
+                    }
+                }
+            }
+
+            // Real-Time Telemetry Quick Strip
+            Text(
+                text = "REAL-TIME HARDWARE METRICS",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextSecondary,
+                letterSpacing = 1.sp
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                QuickTelemetryCard(
+                    title = "Battery",
+                    value = "${battery.levelPercent}%",
+                    status = "${battery.temperatureCelsius}°C",
+                    icon = Icons.Default.BatteryChargingFull,
+                    accentColor = if (battery.levelPercent > 20) GreenSuccess else RedDanger,
+                    modifier = Modifier.weight(1f)
+                )
+                QuickTelemetryCard(
+                    title = "Display",
+                    value = "${specs.displayRefreshRate.toInt()} Hz",
+                    status = specs.displayResolution.substringBefore(" px"),
+                    icon = Icons.Default.TouchApp,
+                    accentColor = CyanAccent,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                QuickTelemetryCard(
+                    title = "RAM Memory",
+                    value = "${specs.ramAvailableGb} GB",
+                    status = "Free of ${specs.ramTotalGb}GB",
+                    icon = Icons.Default.Memory,
+                    accentColor = Color(0xFFE040FB),
+                    modifier = Modifier.weight(1f)
+                )
+                QuickTelemetryCard(
+                    title = "Storage",
+                    value = "${specs.storageAvailableGb} GB",
+                    status = "Free of ${specs.storageTotalGb}GB",
+                    icon = Icons.Default.Storage,
+                    accentColor = AmberWarning,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // Component Tests Section
+            Text(
+                text = "COMPONENT DIAGNOSTIC SUITE",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextSecondary,
+                letterSpacing = 1.sp
+            )
+
+            ComponentCategoryCard(
+                title = "Screen & Touch Display",
+                description = "Dead pixel inspection, multi-touch tracking, touch digitizer grid",
+                icon = Icons.Default.TouchApp,
+                category = TestCategory.SCREEN,
+                testItems = testItems,
+                onClick = { onNavigate(AppScreen.SCREEN_TEST) }
+            )
+
+            ComponentCategoryCard(
+                title = "Battery & Power Health",
+                description = "Charging circuitry, cell health, operating voltage and thermal safety",
+                icon = Icons.Default.ElectricBolt,
+                category = TestCategory.BATTERY,
+                testItems = testItems,
+                onClick = { onNavigate(AppScreen.BATTERY_TEST) }
+            )
+
+            ComponentCategoryCard(
+                title = "Speaker & Microphone Audio",
+                description = "Stereo channels, 200Hz-4kHz sweep, decibel level waveform",
+                icon = Icons.Default.VolumeUp,
+                category = TestCategory.AUDIO,
+                testItems = testItems,
+                onClick = { onNavigate(AppScreen.AUDIO_TEST) }
+            )
+
+            ComponentCategoryCard(
+                title = "Motion & Ambient Sensors",
+                description = "Accelerometer 3D spirit level, digital compass, lux meter, proximity",
+                icon = Icons.Default.Sensors,
+                category = TestCategory.SENSORS,
+                testItems = testItems,
+                onClick = { onNavigate(AppScreen.SENSORS_TEST) }
+            )
+
+            ComponentCategoryCard(
+                title = "Haptics & Camera Torch",
+                description = "Vibration actuator patterns and rear LED illumination",
+                icon = Icons.Default.Vibration,
+                category = TestCategory.HAPTICS_TORCH,
+                testItems = testItems,
+                onClick = { onNavigate(AppScreen.HAPTICS_TORCH_TEST) }
+            )
+
+            Spacer(modifier = Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+fun QuickTelemetryCard(
+    title: String,
+    value: String,
+    status: String,
+    icon: ImageVector,
+    accentColor: Color,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        color = DiagnosticSurface,
+        shape = RoundedCornerShape(14.dp),
+        modifier = modifier.border(1.dp, DiagnosticCardBorder, RoundedCornerShape(14.dp))
+    ) {
+        Column(modifier = Modifier.padding(12.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(text = title, fontSize = 11.sp, color = TextSecondary)
+                Icon(icon, contentDescription = null, tint = accentColor, modifier = Modifier.size(16.dp))
+            }
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = value,
+                fontSize = 17.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = TextPrimary,
+                fontFamily = FontFamily.Monospace
+            )
+            Text(text = status, fontSize = 11.sp, color = TextMuted)
+        }
+    }
+}
+
+@Composable
+fun ComponentCategoryCard(
+    title: String,
+    description: String,
+    icon: ImageVector,
+    category: TestCategory,
+    testItems: List<com.example.data.model.DiagnosticItem>,
+    onClick: () -> Unit
+) {
+    val items = testItems.filter { it.category == category }
+    val passedCount = items.count { it.status == TestStatus.PASSED }
+    val failedCount = items.count { it.status == TestStatus.FAILED }
+    val hasUntested = items.any { it.status == TestStatus.UNTESTED }
+
+    val statusBadgeColor = when {
+        failedCount > 0 -> RedDanger
+        passedCount > 0 && !hasUntested -> GreenSuccess
+        passedCount > 0 -> CyanAccent
+        else -> TextMuted
+    }
+
+    val statusText = when {
+        failedCount > 0 -> "$failedCount Failed"
+        passedCount == items.size -> "All Passed ($passedCount/${items.size})"
+        passedCount > 0 -> "$passedCount/${items.size} Tested"
+        else -> "Untested (${items.size} checks)"
+    }
+
+    Surface(
+        color = DiagnosticSurface,
+        shape = RoundedCornerShape(16.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, DiagnosticCardBorder, RoundedCornerShape(16.dp))
+            .clickable { onClick() }
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier = Modifier
+                    .size(44.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(DiagnosticSurfaceVariant)
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = CyanAccent,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+
+            Spacer(modifier = Modifier.width(14.dp))
+
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(
+                        text = title,
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary
+                    )
+                    Text(
+                        text = statusText,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = statusBadgeColor
+                    )
+                }
+                Spacer(modifier = Modifier.height(2.dp))
+                Text(
+                    text = description,
+                    fontSize = 12.sp,
+                    color = TextSecondary,
+                    lineHeight = 16.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.ArrowForward,
+                contentDescription = "Open Test",
+                tint = TextMuted,
+                modifier = Modifier.size(16.dp)
+            )
+        }
+    }
+}
