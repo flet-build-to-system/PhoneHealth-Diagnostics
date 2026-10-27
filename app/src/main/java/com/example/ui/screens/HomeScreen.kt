@@ -30,7 +30,7 @@ import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Vibration
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.CloudQueue
@@ -412,7 +412,7 @@ fun HomeScreen(
             ComponentCategoryCard(
                 title = "Speaker & Microphone Audio",
                 description = "Stereo channels, 200Hz-4kHz sweep, decibel level waveform",
-                icon = Icons.Default.VolumeUp,
+                icon = Icons.AutoMirrored.Filled.VolumeUp,
                 category = TestCategory.AUDIO,
                 testItems = testItems,
                 onClick = { onNavigate(AppScreen.AUDIO_TEST) }

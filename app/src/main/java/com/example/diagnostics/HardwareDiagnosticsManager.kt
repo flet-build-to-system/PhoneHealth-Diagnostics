@@ -185,7 +185,7 @@ class HardwareDiagnosticsManager(private val context: Context) : SensorEventList
         var btDetails = "Bluetooth not available"
         try {
             val btManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
-            val btAdapter = btManager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
+            val btAdapter = btManager?.adapter
             if (btAdapter != null) {
                 btEnabled = btAdapter.isEnabled
                 btDetails = if (btEnabled) {

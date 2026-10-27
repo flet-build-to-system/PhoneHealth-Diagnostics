@@ -19,9 +19,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.HelpOutline
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
@@ -106,8 +106,8 @@ fun TestStatusBadge(status: TestStatus) {
         TestStatus.PASSED -> Triple(GreenSuccess.copy(alpha = 0.15f), GreenSuccess, Icons.Default.CheckCircle)
         TestStatus.FAILED -> Triple(RedDanger.copy(alpha = 0.15f), RedDanger, Icons.Default.Close)
         TestStatus.WARNING -> Triple(AmberWarning.copy(alpha = 0.15f), AmberWarning, Icons.Default.Warning)
-        TestStatus.SKIPPED -> Triple(DiagnosticSurfaceVariant, TextMuted, Icons.Default.HelpOutline)
-        TestStatus.UNTESTED -> Triple(DiagnosticSurfaceVariant, TextSecondary, Icons.Default.HelpOutline)
+        TestStatus.SKIPPED -> Triple(DiagnosticSurfaceVariant, TextMuted, Icons.AutoMirrored.Filled.HelpOutline)
+        TestStatus.UNTESTED -> Triple(DiagnosticSurfaceVariant, TextSecondary, Icons.AutoMirrored.Filled.HelpOutline)
     }
 
     Row(

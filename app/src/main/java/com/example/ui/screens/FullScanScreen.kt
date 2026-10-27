@@ -36,7 +36,7 @@ import androidx.compose.material.icons.filled.RestartAlt
 import androidx.compose.material.icons.filled.Sensors
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Vibration
-import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.automirrored.filled.VolumeUp
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Button
@@ -452,7 +452,7 @@ fun ScanMetricChip(label: String, count: Int, color: Color) {
 fun ScanItemRow(item: DiagnosticItem) {
     val categoryIcon = when (item.category) {
         TestCategory.CONNECTIVITY -> Icons.Default.Wifi
-        TestCategory.AUDIO -> Icons.Default.VolumeUp
+        TestCategory.AUDIO -> Icons.AutoMirrored.Filled.VolumeUp
         TestCategory.SCREEN -> Icons.Default.TouchApp
         TestCategory.BATTERY -> Icons.Default.ElectricBolt
         TestCategory.SENSORS -> Icons.Default.Sensors
