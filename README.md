@@ -11,7 +11,7 @@ This repository is configured with automated CI/CD workflows under `.github/work
 ### 1. `android-ci.yml` (Continuous Integration)
 - **Triggers:** Push or Pull Request on `main`, `master`, `develop`, or manual trigger (`workflow_dispatch`).
 - **Tasks:**
-  - Sets up JDK 17 with Gradle caching.
+  - Sets up JDK 21 (Temurin) with Gradle caching and optimized worker memory.
   - Automatically runs unit & Robolectric tests (`./gradlew testDebugUnitTest`).
   - Assembles the Debug APK (`./gradlew assembleDebug`).
   - Uploads test reports and the built `.apk` as downloadable GitHub Actions artifacts.
