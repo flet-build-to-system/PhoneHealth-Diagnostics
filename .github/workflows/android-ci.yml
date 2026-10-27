@@ -16,6 +16,10 @@ jobs:
     name: Build & Test Android App
     runs-on: ubuntu-latest
 
+    env:
+      STORE_PASSWORD: "android"
+      KEY_PASSWORD: "android"
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -30,20 +34,39 @@ jobs:
       - name: Grant Execute Permission to Gradlew
         run: chmod +x gradlew
 
-      - name: Prepare Environment & Keystores
+      - name: Provision Required Keystores & Environment
         run: |
-          # Prepare .env from .env.example for Secrets Gradle Plugin
+          # 1. Setup .env from .env.example if missing
           if [ ! -f .env ] && [ -f .env.example ]; then
             cp .env.example .env
           fi
 
-          # Decode debug keystore if present in repo
-          if [ ! -f debug.keystore ] && [ -f debug.keystore.base64 ]; then
-            base64 -d debug.keystore.base64 > debug.keystore || true
+          # 2. Provision debug.keystore required for assembleDebug
+          if [ ! -f debug.keystore ]; then
+            if [ -f debug.keystore.base64 ]; then
+              base64 -d debug.keystore.base64 > debug.keystore 2>/dev/null || true
+            fi
+            if [ ! -f debug.keystore ] || [ ! -s debug.keystore ]; then
+              echo "Generating debug.keystore..."
+              keytool -genkeypair -v -keystore debug.keystore \
+                -storepass android -alias androiddebugkey -keypass android \
+                -keyalg RSA -keysize 2048 -validity 10000 \
+                -dname "CN=Android Debug,O=Android,C=US"
+            fi
           fi
 
-      - name: Run Unit & Robolectric Tests
-        run: ./gradlew testDebugUnitTest --continue --stacktrace
+          # 3. Provision my-upload-key.jks required for release signing configuration
+          if [ ! -f my-upload-key.jks ]; then
+            echo "Generating fallback my-upload-key.jks..."
+            keytool -genkeypair -v -keystore my-upload-key.jks \
+              -alias upload -keyalg RSA -keysize 2048 -validity 10000 \
+              -storepass android -keypass android \
+              -dname "CN=Android Upload,O=AIStudio,C=US"
+          fi
+          echo "KEYSTORE_PATH=$GITHUB_WORKSPACE/my-upload-key.jks" >> $GITHUB_ENV
+
+      - name: Run Unit Tests
+        run: ./gradlew testDebugUnitTest --continue --no-daemon --stacktrace
 
       - name: Upload Test Results
         if: always()
@@ -54,7 +77,7 @@ jobs:
           retention-days: 7
 
       - name: Assemble Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug --no-daemon --stacktrace
 
       - name: Upload Debug APK
         uses: actions/upload-artifact@v4
