@@ -31,6 +31,10 @@ import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.TouchApp
 import androidx.compose.material.icons.filled.Vibration
 import androidx.compose.material.icons.filled.VolumeUp
+import androidx.compose.material.icons.filled.Cloud
+import androidx.compose.material.icons.filled.CloudDone
+import androidx.compose.material.icons.filled.CloudQueue
+import androidx.compose.material.icons.filled.Wifi
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -43,6 +47,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import com.example.ui.auth.GoogleSignInHelper
+import android.widget.Toast
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -85,8 +93,21 @@ fun HomeScreen(
 
     val health = remember(testItems) { viewModel.calculateOverallHealth() }
 
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val coroutineScope = androidx.compose.runtime.rememberCoroutineScope()
+    val credentialManager = remember { androidx.credentials.CredentialManager.create(context) }
+    val currentUser by viewModel.currentUser.collectAsStateWithLifecycle()
+    var showSignOutDialog by remember { androidx.compose.runtime.mutableStateOf(false) }
+
     LaunchedEffect(Unit) {
         viewModel.evaluateAutomaticSystemHealth()
+        GoogleSignInHelper.attemptAutoSignIn(
+            context = context,
+            credentialManager = credentialManager,
+            scope = coroutineScope,
+            onAuthSuccess = {},
+            onUnauthenticated = {}
+        )
     }
 
     Scaffold(
@@ -94,6 +115,60 @@ fun HomeScreen(
             DiagnosticTopAppBar(
                 title = "Hardware Diagnostics",
                 actions = {
+                    if (currentUser == null) {
+                        OutlinedButton(
+                            onClick = {
+                                GoogleSignInHelper.onGoogleSignInClicked(
+                                    context = context,
+                                    credentialManager = credentialManager,
+                                    scope = coroutineScope,
+                                    onAuthSuccess = {
+                                        Toast.makeText(context, "Signed in with Google", Toast.LENGTH_SHORT).show()
+                                    },
+                                    onAuthError = { err: String ->
+                                        Toast.makeText(context, err, Toast.LENGTH_LONG).show()
+                                    }
+                                )
+                            },
+                            modifier = Modifier
+                                .height(36.dp)
+                                .testTag("google_signin_button"),
+                            shape = RoundedCornerShape(18.dp),
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = CyanAccent)
+                        ) {
+                            Icon(Icons.Default.CloudQueue, contentDescription = null, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Sign In", fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                        }
+                    } else {
+                        Surface(
+                            color = GreenSuccess.copy(alpha = 0.15f),
+                            shape = RoundedCornerShape(18.dp),
+                            modifier = Modifier
+                                .clickable { showSignOutDialog = true }
+                                .padding(horizontal = 4.dp)
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.CloudDone,
+                                    contentDescription = "Cloud Synced",
+                                    tint = GreenSuccess,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = currentUser?.email?.substringBefore("@") ?: "Synced",
+                                    fontSize = 11.sp,
+                                    color = GreenSuccess,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+
                     IconButton(
                         onClick = { onNavigate(AppScreen.HISTORY) },
                         modifier = Modifier.testTag("history_button")
@@ -109,6 +184,38 @@ fun HomeScreen(
         },
         containerColor = DiagnosticDarkBg
     ) { innerPadding ->
+        if (showSignOutDialog) {
+            androidx.compose.material3.AlertDialog(
+                onDismissRequest = { showSignOutDialog = false },
+                title = { Text("Google Account Sync", color = TextPrimary, fontWeight = FontWeight.Bold) },
+                text = {
+                    Text(
+                        text = "Signed in as ${currentUser?.email}.\nCloud Firestore sync is active for diagnostic reports.",
+                        color = TextSecondary,
+                        fontSize = 13.sp
+                    )
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            showSignOutDialog = false
+                            GoogleSignInHelper.signOut(context, credentialManager, coroutineScope) {
+                                android.widget.Toast.makeText(context, "Signed out", android.widget.Toast.LENGTH_SHORT).show()
+                            }
+                        },
+                        colors = ButtonDefaults.buttonColors(containerColor = RedDanger)
+                    ) {
+                        Text("Sign Out")
+                    }
+                },
+                dismissButton = {
+                    OutlinedButton(onClick = { showSignOutDialog = false }) {
+                        Text("Close")
+                    }
+                },
+                containerColor = DiagnosticSurface
+            )
+        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -178,30 +285,36 @@ fun HomeScreen(
                         horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Button(
+                            onClick = { onNavigate(AppScreen.FULL_SCAN) },
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(48.dp)
+                                .testTag("run_full_scan_button"),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = CyanAccent,
+                                contentColor = Color.Black
+                            ),
+                            shape = RoundedCornerShape(12.dp)
+                        ) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Full Hardware Scan", fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        }
+
+                        OutlinedButton(
                             onClick = {
                                 viewModel.evaluateAutomaticSystemHealth()
                                 onNavigate(AppScreen.REPORT_DETAIL)
                             },
                             modifier = Modifier
-                                .weight(1f)
-                                .height(46.dp)
+                                .height(48.dp)
                                 .testTag("generate_report_button"),
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = CyanAccent,
-                                contentColor = Color.Black
-                            )
+                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
                             Icon(Icons.Default.Assessment, contentDescription = null, modifier = Modifier.size(16.dp))
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text("Full Health Report", fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        }
-
-                        OutlinedButton(
-                            onClick = { viewModel.evaluateAutomaticSystemHealth() },
-                            modifier = Modifier.height(46.dp),
-                            colors = ButtonDefaults.outlinedButtonColors(contentColor = TextPrimary)
-                        ) {
-                            Text("Quick Scan", fontSize = 12.sp)
+                            Spacer(modifier = Modifier.width(4.dp))
+                            Text("Report", fontSize = 12.sp)
                         }
                     }
                 }
@@ -267,6 +380,15 @@ fun HomeScreen(
                 fontWeight = FontWeight.Bold,
                 color = TextSecondary,
                 letterSpacing = 1.sp
+            )
+
+            ComponentCategoryCard(
+                title = "Wireless Radios & Network",
+                description = "Wi-Fi interface, Bluetooth LE, cellular modem, GPS GNSS and NFC controller",
+                icon = Icons.Default.Wifi,
+                category = TestCategory.CONNECTIVITY,
+                testItems = testItems,
+                onClick = { onNavigate(AppScreen.FULL_SCAN) }
             )
 
             ComponentCategoryCard(

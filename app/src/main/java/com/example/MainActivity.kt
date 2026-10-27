@@ -17,6 +17,7 @@ import com.example.ui.AppScreen
 import com.example.ui.DiagnosticViewModel
 import com.example.ui.screens.AudioTestScreen
 import com.example.ui.screens.BatteryHealthScreen
+import com.example.ui.screens.FullScanScreen
 import com.example.ui.screens.HapticsTorchScreen
 import com.example.ui.screens.HomeScreen
 import com.example.ui.screens.ReportDetailScreen
@@ -51,6 +52,11 @@ class MainActivity : ComponentActivity() {
                             AppScreen.HOME -> HomeScreen(
                                 viewModel = viewModel,
                                 onNavigate = { viewModel.navigateTo(it) }
+                            )
+                            AppScreen.FULL_SCAN -> FullScanScreen(
+                                viewModel = viewModel,
+                                onFinish = { viewModel.navigateTo(AppScreen.REPORT_DETAIL) },
+                                onBack = { viewModel.navigateBack() }
                             )
                             AppScreen.SCREEN_TEST -> ScreenTestScreen(
                                 viewModel = viewModel,

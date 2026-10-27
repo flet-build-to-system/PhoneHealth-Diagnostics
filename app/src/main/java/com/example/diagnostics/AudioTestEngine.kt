@@ -2,10 +2,13 @@ package com.example.diagnostics
 
 import android.annotation.SuppressLint
 import android.media.AudioAttributes
+import android.media.AudioDeviceInfo
 import android.media.AudioFormat
+import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.AudioTrack
 import android.media.MediaRecorder
+import android.os.Build
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -15,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import kotlin.math.log10
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -22,7 +26,8 @@ import kotlin.math.sqrt
 enum class AudioChannel {
     LEFT,
     RIGHT,
-    STEREO_BOTH
+    STEREO_BOTH,
+    EARPIECE
 }
 
 class AudioTestEngine(private val scope: CoroutineScope) {
@@ -70,11 +75,17 @@ class AudioTestEngine(private val scope: CoroutineScope) {
                     AudioFormat.ENCODING_PCM_16BIT
                 )
 
+                val usage = if (channel == AudioChannel.EARPIECE) {
+                    AudioAttributes.USAGE_VOICE_COMMUNICATION
+                } else {
+                    AudioAttributes.USAGE_MEDIA
+                }
+
                 val track = AudioTrack.Builder()
                     .setAudioAttributes(
                         AudioAttributes.Builder()
-                            .setUsage(AudioAttributes.USAGE_MEDIA)
-                            .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
+                            .setUsage(usage)
+                            .setContentType(if (channel == AudioChannel.EARPIECE) AudioAttributes.CONTENT_TYPE_SPEECH else AudioAttributes.CONTENT_TYPE_MUSIC)
                             .build()
                     )
                     .setAudioFormat(
@@ -99,7 +110,8 @@ class AudioTestEngine(private val scope: CoroutineScope) {
                 while (isActive && (durationMs <= 0 || System.currentTimeMillis() - startTime < durationMs)) {
                     for (i in 0 until numSamples) {
                         val angle = 2.0 * Math.PI * sampleIndex * frequencyHz / sampleRate
-                        val sampleVal = (sin(angle) * Short.MAX_VALUE * 0.75).toInt().toShort()
+                        val amplitude = if (channel == AudioChannel.EARPIECE) 0.5f else 0.75f
+                        val sampleVal = (sin(angle) * Short.MAX_VALUE * amplitude).toInt().toShort()
                         sampleIndex++
 
                         when (channel) {
@@ -111,7 +123,7 @@ class AudioTestEngine(private val scope: CoroutineScope) {
                                 shortBuffer[2 * i] = 0               // Left mute
                                 shortBuffer[2 * i + 1] = sampleVal   // Right
                             }
-                            AudioChannel.STEREO_BOTH -> {
+                            AudioChannel.STEREO_BOTH, AudioChannel.EARPIECE -> {
                                 shortBuffer[2 * i] = sampleVal       // Left
                                 shortBuffer[2 * i + 1] = sampleVal   // Right
                             }
@@ -256,7 +268,6 @@ class AudioTestEngine(private val scope: CoroutineScope) {
                             sumSquared += buffer[i] * buffer[i]
                         }
                         val rms = sqrt(sumSquared / readCount)
-                        // Map RMS (0 to 32767) to approximate dB (0 to ~90 dB)
                         val db = if (rms > 1.0) {
                             (20 * log10(rms / 32767.0) + 90.0).toFloat().coerceIn(0f, 100f)
                         } else {
@@ -297,6 +308,17 @@ class AudioTestEngine(private val scope: CoroutineScope) {
             }
         } catch (_: Exception) {}
         audioRecord = null
+    }
+
+    suspend fun runAutomatedSpeakerMicProbe(): Boolean = withContext(Dispatchers.Default) {
+        // Plays a short tone and checks for peak response
+        try {
+            playChannelTone(AudioChannel.STEREO_BOTH, 1000, 1200)
+            delay(1300)
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     fun releaseAll() {

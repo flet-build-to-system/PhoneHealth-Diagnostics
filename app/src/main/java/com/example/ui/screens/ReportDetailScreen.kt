@@ -195,7 +195,12 @@ fun ReportDetailScreen(
                         if (!isSavedLocally) {
                             viewModel.saveReportToHistory("Comprehensive report")
                             isSavedLocally = true
-                            Toast.makeText(context, "Report saved to history", Toast.LENGTH_SHORT).show()
+                            val toastMsg = if (viewModel.currentUser.value != null) {
+                                "Saved to local history & synced to Firebase Cloud ☁️"
+                            } else {
+                                "Report saved to local history"
+                            }
+                            Toast.makeText(context, toastMsg, Toast.LENGTH_SHORT).show()
                         }
                     },
                     modifier = Modifier

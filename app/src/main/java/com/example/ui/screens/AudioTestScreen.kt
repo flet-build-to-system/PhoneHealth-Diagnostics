@@ -170,6 +170,15 @@ fun AudioTestScreen(
                     )
                 }
 
+                Spacer(modifier = Modifier.height(8.dp))
+
+                SpeakerToneButton(
+                    label = "Earpiece Receiver Speaker (700Hz Voice Band)",
+                    isActive = isPlayingTone && currentChannel == AudioChannel.EARPIECE,
+                    onClick = { audioEngine.playChannelTone(AudioChannel.EARPIECE, 700, 4000) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
                 if (isPlayingTone || isSweeping) {
                     Spacer(modifier = Modifier.height(10.dp))
                     Button(
@@ -188,7 +197,7 @@ fun AudioTestScreen(
                 Spacer(modifier = Modifier.height(14.dp))
 
                 Text(
-                    text = "Did left and right speakers produce clear tone?",
+                    text = "Did loudspeakers and earpiece produce clear undistorted tone?",
                     fontSize = 13.sp,
                     color = TextSecondary
                 )
@@ -196,14 +205,20 @@ fun AudioTestScreen(
 
                 TestPassFailButtons(
                     onPass = {
+                        viewModel.updateTestResult("audio_loudspeaker", TestStatus.PASSED, "Loudspeaker stereo output clear")
+                        viewModel.updateTestResult("audio_earpiece", TestStatus.PASSED, "Earpiece receiver functional")
                         viewModel.updateTestResult("audio_stereo_l", TestStatus.PASSED, "Left channel clear (440Hz)")
                         viewModel.updateTestResult("audio_stereo_r", TestStatus.PASSED, "Right channel clear (880Hz)")
                     },
                     onFail = {
+                        viewModel.updateTestResult("audio_loudspeaker", TestStatus.FAILED, "Speaker distortion or silence")
+                        viewModel.updateTestResult("audio_earpiece", TestStatus.FAILED, "Earpiece distortion or silence")
                         viewModel.updateTestResult("audio_stereo_l", TestStatus.FAILED, "Audio channel distortion/mute")
                         viewModel.updateTestResult("audio_stereo_r", TestStatus.FAILED, "Audio channel distortion/mute")
                     },
                     onSkip = {
+                        viewModel.updateTestResult("audio_loudspeaker", TestStatus.SKIPPED, "Skipped")
+                        viewModel.updateTestResult("audio_earpiece", TestStatus.SKIPPED, "Skipped")
                         viewModel.updateTestResult("audio_stereo_l", TestStatus.SKIPPED, "Skipped")
                         viewModel.updateTestResult("audio_stereo_r", TestStatus.SKIPPED, "Skipped")
                     }

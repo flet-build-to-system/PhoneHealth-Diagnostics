@@ -1,16 +1,26 @@
 package com.example.diagnostics
 
 import android.app.ActivityManager
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothManager
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
+import android.location.LocationManager
+import android.media.AudioDeviceInfo
+import android.media.AudioManager
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
+import android.net.wifi.WifiManager
+import android.nfc.NfcAdapter
 import android.os.BatteryManager
 import android.os.Build
 import android.os.Environment
@@ -18,10 +28,12 @@ import android.os.StatFs
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
+import android.telephony.TelephonyManager
 import android.util.DisplayMetrics
 import android.view.WindowManager
 import com.example.data.model.BatterySnapshot
 import com.example.data.model.DeviceHardwareSpecs
+import com.example.data.model.RadioInfo
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -55,6 +67,9 @@ class HardwareDiagnosticsManager(private val context: Context) : SensorEventList
     private val _sensorReadings = MutableStateFlow(SensorReadings())
     val sensorReadings: StateFlow<SensorReadings> = _sensorReadings.asStateFlow()
 
+    private val _radioInfo = MutableStateFlow(RadioInfo())
+    val radioInfo: StateFlow<RadioInfo> = _radioInfo.asStateFlow()
+
     private val _isTorchOn = MutableStateFlow(false)
     val isTorchOn: StateFlow<Boolean> = _isTorchOn.asStateFlow()
 
@@ -63,6 +78,7 @@ class HardwareDiagnosticsManager(private val context: Context) : SensorEventList
 
     private val sensorManager = context.getSystemService(Context.SENSOR_SERVICE) as? SensorManager
     private val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as? CameraManager
+    private val audioManager = context.getSystemService(Context.AUDIO_SERVICE) as? AudioManager
 
     private var cameraIdWithTorch: String? = null
 
@@ -88,6 +104,7 @@ class HardwareDiagnosticsManager(private val context: Context) : SensorEventList
         initSensors()
         initTorch()
         initBattery()
+        refreshRadioInfo()
     }
 
     private fun initSensors() {
@@ -136,6 +153,107 @@ class HardwareDiagnosticsManager(private val context: Context) : SensorEventList
         } catch (e: Exception) {
             e.printStackTrace()
         }
+    }
+
+    fun refreshRadioInfo(): RadioInfo {
+        val pm = context.packageManager
+
+        // Wi-Fi
+        val hasWifi = pm.hasSystemFeature(PackageManager.FEATURE_WIFI)
+        var wifiEnabled = false
+        var wifiConnected = false
+        var wifiDetails = "Not connected"
+        try {
+            val wifiManager = context.applicationContext.getSystemService(Context.WIFI_SERVICE) as? WifiManager
+            wifiEnabled = wifiManager?.isWifiEnabled == true
+
+            val connManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            val activeNetwork = connManager?.activeNetwork
+            val caps = connManager?.getNetworkCapabilities(activeNetwork)
+            if (caps != null && caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)) {
+                wifiConnected = true
+                wifiDetails = "Connected • Internet Access"
+            } else if (wifiEnabled) {
+                wifiDetails = "Radio On • Scanning"
+            }
+        } catch (_: Exception) {}
+
+        // Bluetooth
+        val hasBluetooth = pm.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH)
+        val hasBle = pm.hasSystemFeature(PackageManager.FEATURE_BLUETOOTH_LE)
+        var btEnabled = false
+        var btDetails = "Bluetooth not available"
+        try {
+            val btManager = context.getSystemService(Context.BLUETOOTH_SERVICE) as? BluetoothManager
+            val btAdapter = btManager?.adapter ?: BluetoothAdapter.getDefaultAdapter()
+            if (btAdapter != null) {
+                btEnabled = btAdapter.isEnabled
+                btDetails = if (btEnabled) {
+                    if (hasBle) "Active (Bluetooth & BLE 5.x Ready)" else "Active"
+                } else {
+                    "Radio Standby (Disabled)"
+                }
+            }
+        } catch (_: Exception) {}
+
+        // Cellular Modem
+        val hasTelephony = pm.hasSystemFeature(PackageManager.FEATURE_TELEPHONY)
+        var cellConnected = false
+        var cellDetails = "No mobile service"
+        try {
+            val connManager = context.getSystemService(Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+            val activeNetwork = connManager?.activeNetwork
+            val caps = connManager?.getNetworkCapabilities(activeNetwork)
+            if (caps != null && caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)) {
+                cellConnected = true
+            }
+
+            val teleManager = context.getSystemService(Context.TELEPHONY_SERVICE) as? TelephonyManager
+            val operator = teleManager?.networkOperatorName ?: ""
+            cellDetails = if (cellConnected) {
+                if (operator.isNotEmpty()) "Connected: $operator (Mobile Data Active)" else "Mobile Data Active"
+            } else if (hasTelephony) {
+                if (operator.isNotEmpty()) "Network: $operator (Data Standby)" else "Modem Ready"
+            } else {
+                "Cellular modem not present"
+            }
+        } catch (_: Exception) {}
+
+        // GPS Location
+        val hasGps = pm.hasSystemFeature(PackageManager.FEATURE_LOCATION_GPS)
+        var gpsEnabled = false
+        try {
+            val locManager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
+            gpsEnabled = locManager?.isProviderEnabled(LocationManager.GPS_PROVIDER) == true
+        } catch (_: Exception) {}
+
+        // NFC
+        val hasNfc = pm.hasSystemFeature(PackageManager.FEATURE_NFC)
+        var nfcEnabled = false
+        try {
+            val nfcAdapter = NfcAdapter.getDefaultAdapter(context)
+            nfcEnabled = nfcAdapter?.isEnabled == true
+        } catch (_: Exception) {}
+
+        val info = RadioInfo(
+            wifiAvailable = hasWifi,
+            wifiEnabled = wifiEnabled,
+            wifiConnected = wifiConnected,
+            wifiDetails = wifiDetails,
+            bluetoothAvailable = hasBluetooth,
+            bluetoothEnabled = btEnabled,
+            bluetoothBleSupported = hasBle,
+            bluetoothDetails = btDetails,
+            cellularAvailable = hasTelephony,
+            cellularConnected = cellConnected,
+            cellularDetails = cellDetails,
+            gpsAvailable = hasGps,
+            gpsEnabled = gpsEnabled,
+            nfcAvailable = hasNfc,
+            nfcEnabled = nfcEnabled
+        )
+        _radioInfo.value = info
+        return info
     }
 
     fun startSensorListening() {
@@ -207,13 +325,11 @@ class HardwareDiagnosticsManager(private val context: Context) : SensorEventList
             if (SensorManager.getRotationMatrix(r, i, gravity, geomagnetic)) {
                 val orientation = FloatArray(3)
                 SensorManager.getOrientation(r, orientation)
-                // azimuth in radians to degrees
                 var degrees = Math.toDegrees(orientation[0].toDouble()).toFloat()
                 if (degrees < 0) degrees += 360f
                 _sensorReadings.value = _sensorReadings.value.copy(compassDegrees = degrees)
             }
         } else if (hasGravity) {
-            // fallback simple angle
             val angle = Math.toDegrees(atan2(gravity[0].toDouble(), gravity[1].toDouble())).toFloat()
             _sensorReadings.value = _sensorReadings.value.copy(
                 compassDegrees = if (angle < 0) angle + 360f else angle
@@ -341,6 +457,28 @@ class HardwareDiagnosticsManager(private val context: Context) : SensorEventList
         }
     }
 
+    fun getAudioSpeakerTypes(): List<String> {
+        val list = mutableListOf<String>()
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val devices = audioManager?.getDevices(AudioManager.GET_DEVICES_OUTPUTS)
+                devices?.forEach { d ->
+                    when (d.type) {
+                        AudioDeviceInfo.TYPE_BUILTIN_SPEAKER -> list.add("Stereo Loudspeaker")
+                        AudioDeviceInfo.TYPE_BUILTIN_EARPIECE -> list.add("Earpiece Receiver")
+                        AudioDeviceInfo.TYPE_WIRED_HEADSET, AudioDeviceInfo.TYPE_WIRED_HEADPHONES -> list.add("Wired Audio Jack")
+                        AudioDeviceInfo.TYPE_BLUETOOTH_A2DP, AudioDeviceInfo.TYPE_BLUETOOTH_SCO -> list.add("Bluetooth Audio")
+                    }
+                }
+            }
+        } catch (_: Exception) {}
+        if (list.isEmpty()) {
+            list.add("Stereo Loudspeaker")
+            list.add("Earpiece Receiver")
+        }
+        return list.distinct()
+    }
+
     fun getDeviceHardwareSpecs(): DeviceHardwareSpecs {
         val wm = context.getSystemService(Context.WINDOW_SERVICE) as? WindowManager
         val metrics = DisplayMetrics()
@@ -393,11 +531,16 @@ class HardwareDiagnosticsManager(private val context: Context) : SensorEventList
             availStorageGb = bytesAvail / (1024.0 * 1024.0 * 1024.0)
         } catch (_: Exception) {}
 
+        val cores = Runtime.getRuntime().availableProcessors()
+        val abis = Build.SUPPORTED_ABIS.firstOrNull() ?: "arm64-v8a"
+
         return DeviceHardwareSpecs(
             manufacturer = Build.MANUFACTURER.replaceFirstChar { it.uppercase() },
             model = Build.MODEL,
             device = Build.DEVICE,
             board = Build.BOARD,
+            cpuAbi = abis,
+            cpuCores = cores,
             androidVersion = Build.VERSION.RELEASE,
             sdkInt = Build.VERSION.SDK_INT,
             displayResolution = "${widthPx} × ${heightPx} px",

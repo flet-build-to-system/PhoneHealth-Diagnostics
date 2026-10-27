@@ -22,6 +22,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.HelpOutline
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -101,6 +102,7 @@ fun DiagnosticTopAppBar(
 @Composable
 fun TestStatusBadge(status: TestStatus) {
     val (bgColor, textColor, icon) = when (status) {
+        TestStatus.RUNNING -> Triple(CyanAccent.copy(alpha = 0.2f), CyanAccent, Icons.Default.Refresh)
         TestStatus.PASSED -> Triple(GreenSuccess.copy(alpha = 0.15f), GreenSuccess, Icons.Default.CheckCircle)
         TestStatus.FAILED -> Triple(RedDanger.copy(alpha = 0.15f), RedDanger, Icons.Default.Close)
         TestStatus.WARNING -> Triple(AmberWarning.copy(alpha = 0.15f), AmberWarning, Icons.Default.Warning)
