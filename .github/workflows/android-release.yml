@@ -56,7 +56,7 @@ jobs:
 
           # 2. Provision fallback google-services.json if missing
           if [ ! -f app/google-services.json ]; then
-            echo '{"project_info":{"project_number":"0","project_id":"phone-diagnostics","storage_bucket":""},"client":[{"client_info":{"mobilesdk_app_id":"1:0:android:0","android_client_info":{"package_name":"com.example"}},"api_key":[{"current_key":""}],"services":{}}],"configuration_version":"1"}' > app/google-services.json
+            echo '{"project_info":{"project_number":"0","project_id":"phone-diagnostics","storage_bucket":""},"client":[{"client_info":{"mobilesdk_app_id":"1:0:android:0","android_client_info":{"package_name":"com.aistudio.diagnostics.qxvt"}},"api_key":[{"current_key":""}],"services":{}}],"configuration_version":"1"}' > app/google-services.json
           fi
 
           # 3. Provision debug.keystore in case debug config is validated

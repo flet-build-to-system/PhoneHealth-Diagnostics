@@ -26,11 +26,17 @@ android {
   // and updating Android apps in AI Studio.
   signingConfigs {
     create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-      storeFile = file(keystorePath)
-      storePassword = System.getenv("STORE_PASSWORD")
-      keyAlias = "upload"
-      keyPassword = System.getenv("KEY_PASSWORD")
+      val keystorePath = providers.environmentVariable("KEYSTORE_PATH").getOrElse("${rootDir}/my-upload-key.jks")
+      val releaseKeystore = file(keystorePath)
+      val debugKeystore = file("${rootDir}/debug.keystore")
+      val hasReleaseKeystore = releaseKeystore.exists()
+
+      storeFile = if (hasReleaseKeystore) releaseKeystore else debugKeystore
+      storePassword = providers.environmentVariable("STORE_PASSWORD").getOrElse("android")
+      keyAlias = providers.environmentVariable("KEY_ALIAS").getOrElse(
+        if (hasReleaseKeystore) "upload" else "androiddebugkey"
+      )
+      keyPassword = providers.environmentVariable("KEY_PASSWORD").getOrElse("android")
     }
     create("debugConfig") {
       storeFile = file("${rootDir}/debug.keystore")
@@ -75,7 +81,9 @@ android {
 secrets {
   propertiesFileName = ".env"
   defaultPropertiesFileName = ".env.example"
+  ignoreList.add("keyToIgnore")
   ignoreList.add("FIREBASE_APPCHECK_DEBUG_TOKEN")
+  ignoreList.add("sdk.*")
 }
 
 googleServices { missingGoogleServicesStrategy = MissingGoogleServicesStrategy.WARN }
