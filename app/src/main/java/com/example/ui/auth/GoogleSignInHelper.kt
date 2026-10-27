@@ -22,6 +22,21 @@ import kotlinx.coroutines.tasks.await
 
 object GoogleSignInHelper {
     private const val TAG = "GoogleSignInHelper"
+    private const val DEFAULT_FALLBACK_CLIENT_ID = "862067017915-k252kl4hk0m9dkl38trdto2mn98o4lil.apps.googleusercontent.com"
+
+    private fun getClientId(context: Context): String {
+        return try {
+            val resId = context.resources.getIdentifier("default_web_client_id", "string", context.packageName)
+            if (resId != 0) {
+                val str = context.getString(resId)
+                if (str.isNotBlank()) str else DEFAULT_FALLBACK_CLIENT_ID
+            } else {
+                DEFAULT_FALLBACK_CLIENT_ID
+            }
+        } catch (_: Exception) {
+            DEFAULT_FALLBACK_CLIENT_ID
+        }
+    }
 
     fun onGoogleSignInClicked(
         context: Context,
@@ -31,13 +46,7 @@ object GoogleSignInHelper {
         onAuthError: (String) -> Unit,
         onAuthCancelled: () -> Unit = {}
     ) {
-        val clientId = try {
-            context.getString(R.string.default_web_client_id)
-        } catch (e: Exception) {
-            onAuthError("Google Sign-In configuration missing: default_web_client_id not found")
-            return
-        }
-
+        val clientId = getClientId(context)
         val signInOption = GetSignInWithGoogleOption.Builder(serverClientId = clientId).build()
         val request = GetCredentialRequest.Builder().addCredentialOption(signInOption).build()
 
@@ -77,12 +86,7 @@ object GoogleSignInHelper {
             return
         }
 
-        val clientId = try {
-            context.getString(R.string.default_web_client_id)
-        } catch (e: Exception) {
-            onUnauthenticated()
-            return
-        }
+        val clientId = getClientId(context)
 
         val googleIdOption = GetGoogleIdOption.Builder()
             .setFilterByAuthorizedAccounts(true)

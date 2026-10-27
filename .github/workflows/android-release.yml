@@ -25,7 +25,7 @@ jobs:
     env:
       STORE_PASSWORD: "android"
       KEY_PASSWORD: "android"
-      GRADLE_OPTS: "-Dorg.gradle.jvmargs=-Xmx3g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8 -Dorg.gradle.workers.max=2"
+      GRADLE_OPTS: "-Xmx3584m -XX:MaxMetaspaceSize=1024m -XX:+UseG1GC -Dfile.encoding=UTF-8 -Dorg.gradle.workers.max=2 -Dorg.gradle.jvmargs=\"-Xmx3584m -XX:MaxMetaspaceSize=1024m -XX:+UseG1GC -Dfile.encoding=UTF-8\""
 
     steps:
       - name: Checkout Code
@@ -56,7 +56,46 @@ jobs:
 
           # 2. Provision fallback google-services.json if missing
           if [ ! -f app/google-services.json ]; then
-            echo '{"project_info":{"project_number":"0","project_id":"phone-diagnostics","storage_bucket":""},"client":[{"client_info":{"mobilesdk_app_id":"1:0:android:0","android_client_info":{"package_name":"com.aistudio.diagnostics.qxvt"}},"api_key":[{"current_key":""}],"services":{}}],"configuration_version":"1"}' > app/google-services.json
+            cat << 'EOF' > app/google-services.json
+{
+  "project_info": {
+    "project_number": "862067017915",
+    "project_id": "abdelha",
+    "storage_bucket": "abdelha.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:862067017915:android:9b9abdfc9873d2c824819e",
+        "android_client_info": {
+          "package_name": "com.aistudio.diagnostics.qxvt"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "862067017915-hk577ppen0116ubjjue8q94rv3vaf0j7.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.aistudio.diagnostics.qxvt",
+            "certificate_hash": "e25aa96c7005e94e9aa0b4279d34c391a48970e0"
+          }
+        },
+        {
+          "client_id": "862067017915-k252kl4hk0m9dkl38trdto2mn98o4lil.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCeT0O_NWxGePErRqWT_ErY5plgJekMhdo"
+        }
+      ],
+      "services": {}
+    }
+  ],
+  "configuration_version": "1"
+}
+EOF
           fi
 
           # 3. Provision debug.keystore in case debug config is validated
@@ -92,11 +131,11 @@ jobs:
 
       - name: Build Release APK
         if: ${{ github.event_name == 'push' || inputs.build_apk }}
-        run: ./gradlew assembleRelease --no-daemon --stacktrace
+        run: ./gradlew assembleRelease --no-daemon --no-configuration-cache --stacktrace
 
       - name: Build Android App Bundle (.aab)
         if: ${{ github.event_name == 'push' || inputs.build_bundle }}
-        run: ./gradlew bundleRelease --no-daemon --stacktrace
+        run: ./gradlew bundleRelease --no-daemon --no-configuration-cache --stacktrace
 
       - name: Upload Release APK
         if: ${{ github.event_name == 'push' || inputs.build_apk }}

@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Phone Diagnostics</string>
+    <string name="default_web_client_id" translatable="false">862067017915-k252kl4hk0m9dkl38trdto2mn98o4lil.apps.googleusercontent.com</string>
 </resources>
